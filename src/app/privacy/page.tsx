@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const PRIVACY_EMAIL = 'privacy@zynvosocial.com';
+const PRIVACY_EMAIL = 'zynvosocial@zynvosocial.com';
 const SUPPORT_EMAIL = 'zynvosocial@gmail.com';
-const APP_URL = 'https://zynvosocial.com';
-const LAST_UPDATED = 'August 7, 2026';
-const EFFECTIVE = 'August 7, 2026';
+const APP_URL = 'https://app.zynvosocial.com';
+const LAST_UPDATED = 'August 9, 2026';
+const EFFECTIVE = 'August 9, 2026';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -75,7 +75,8 @@ export default function PrivacyPolicyPage() {
             <li>Profile photo</li>
             <li>College / institution</li>
             <li>Course, academic year, and club memberships</li>
-            <li>Bio and other optional profile fields you fill in</li>
+            <li>Bio, interest tags, and other optional profile fields you fill in</li>
+            <li>Phone number, if you choose to add one</li>
             <li>
               Social handles you choose to link (Instagram, LinkedIn, X / Twitter)
             </li>
@@ -84,9 +85,9 @@ export default function PrivacyPolicyPage() {
           <Subhead>2.2 Content you create</Subhead>
           <ul className="ml-5 list-disc space-y-1.5">
             <li>Posts, comments, replies, and announcements</li>
-            <li>Event RSVPs and team registrations</li>
-            <li>Uploaded images, videos, and payment screenshots</li>
-            <li>Reports and blocks you submit against other users</li>
+            <li>Event RSVPs, waitlist entries, and team registrations</li>
+            <li>Answers you submit to organizers&apos; registration questions</li>
+            <li>Uploaded images and payment screenshots</li>
           </ul>
 
           <Subhead>2.3 Authentication &amp; device data</Subhead>
@@ -97,9 +98,11 @@ export default function PrivacyPolicyPage() {
               password.
             </li>
             <li>
-              Push notification tokens from <strong>Expo</strong> and
-              <strong> Firebase Cloud Messaging (FCM)</strong> so we can deliver
-              event reminders, message notifications, and security alerts.
+              Push notification tokens from{' '}
+              <strong>Firebase Cloud Messaging (FCM)</strong>, stored with your
+              device platform (for example iOS, Android, or web), so we can
+              deliver event reminders, announcements, and account alerts. These
+              tokens are used only to deliver notifications.
             </li>
             <li>Device type, operating system, app version, locale, and time zone</li>
           </ul>
@@ -116,15 +119,30 @@ export default function PrivacyPolicyPage() {
               <strong> Vercel Analytics / Speed Insights</strong> for the
               website
             </li>
+            <li>
+              In-product engagement recorded to operate the service: posts you
+              upvote or downvote, waves you send or receive, offers you view,
+              save, or click, and whether you have read a notification
+            </li>
             <li>Server logs (IP address, request timestamps, user agent)</li>
           </ul>
 
           <Subhead>2.5 Payment data</Subhead>
           <p>
-            For paid events we only store payment proof screenshots you upload.
-            We do not collect, store, or process debit/credit card numbers,
-            UPI PINs, net-banking credentials, or any other payment instrument
-            directly. Payments are made to event organizers outside Zynvo.
+            For paid events we only store payment proof screenshots you upload,
+            which are shared with the event organizer to confirm your
+            registration. We do not collect, store, or process debit/credit card
+            numbers, UPI PINs, net-banking credentials, or any other payment
+            instrument directly. Payments are made to event organizers outside
+            Zynvo.
+          </p>
+
+          <Subhead>2.6 Location</Subhead>
+          <p>
+            Zynvo does not collect precise or approximate location from your
+            device. Our club and campus maps are built from location details
+            supplied by clubs and organizers, not from your device&apos;s GPS or
+            location services.
           </p>
         </Section>
 
@@ -177,13 +195,33 @@ export default function PrivacyPolicyPage() {
                 />
                 <Row
                   name="Google Cloud Platform"
-                  purpose="Hosting our backend &amp; database"
+                  purpose="Primary hosting for our backend &amp; database"
                   data="All account and content data at rest"
                 />
                 <Row
+                  name="Render"
+                  purpose="Secondary hosting for our backend API"
+                  data="Account and content data processed by the API"
+                />
+                <Row
+                  name="Vercel"
+                  purpose="Hosting our website &amp; web application"
+                  data="Requests to the website, IP, user agent"
+                />
+                <Row
                   name="ImageKit"
-                  purpose="Image / video storage &amp; delivery"
+                  purpose="Image storage &amp; delivery"
                   data="Uploaded media files"
+                />
+                <Row
+                  name="SendGrid"
+                  purpose="Transactional email (verification, password reset)"
+                  data="Name, email address, message content"
+                />
+                <Row
+                  name="Redis"
+                  purpose="Temporary caching to speed up the API"
+                  data="Short-lived cached copies of API responses"
                 />
                 <Row
                   name="PostHog"
@@ -196,14 +234,19 @@ export default function PrivacyPolicyPage() {
                   data="Error stack traces, performance metrics"
                 />
                 <Row
-                  name="Expo &amp; Firebase Cloud Messaging"
+                  name="Firebase Cloud Messaging (Google)"
                   purpose="Push notification delivery"
                   data="Device push tokens, notification content"
                 />
                 <Row
                   name="Event organizers (your RSVPs)"
                   purpose="Operate the events you register for"
-                  data="Your name, email, college, RSVP form answers"
+                  data="Your name, email, college, RSVP form answers, payment proof"
+                />
+                <Row
+                  name="Club administrators"
+                  purpose="Manage membership of clubs you join"
+                  data="Your name, email, college, and profile details"
                 />
               </tbody>
             </table>
@@ -234,10 +277,6 @@ export default function PrivacyPolicyPage() {
               the in-app profile editor at any time.
             </li>
             <li>
-              <strong className="text-white">Report or block</strong> any user
-              or piece of content from inside the app. We review every report.
-            </li>
-            <li>
               <strong className="text-white">Delete your account</strong> and
               all associated data via the in-app settings, or by visiting{' '}
               <a
@@ -258,6 +297,11 @@ export default function PrivacyPolicyPage() {
                 {PRIVACY_EMAIL}
               </a>{' '}
               and we will provide a copy within 30 days.
+            </li>
+            <li>
+              <strong className="text-white">Turn off push notifications</strong>{' '}
+              at any time from your device or browser settings, which stops us
+              from sending to that device.
             </li>
             <li>
               <strong className="text-white">Opt out of analytics</strong> by
@@ -294,9 +338,11 @@ export default function PrivacyPolicyPage() {
             </li>
           </ul>
           <p>
-            When deletion is confirmed, we delete your profile, posts, RSVPs,
-            comments, uploaded media, sessions, and push tokens within{' '}
-            <strong className="text-white">30 days</strong>. We may retain
+            When deletion is confirmed, we delete your profile, posts, RSVPs and
+            waitlist entries, teams, registration answers, comments, uploaded
+            media, notifications, sessions, and push tokens within{' '}
+            <strong className="text-white">30 days</strong>. Your linked Clerk
+            authentication record is deleted at the same time. We may retain
             limited information for legitimate reasons (see Section 8).
           </p>
         </Section>
@@ -333,6 +379,11 @@ export default function PrivacyPolicyPage() {
               retained indefinitely in a form that can no longer identify you.
             </li>
           </ul>
+          <p>
+            Records held independently by an event organizer or club you
+            interacted with are governed by that organizer&apos;s own retention
+            practices.
+          </p>
         </Section>
 
         <Section title="9. Data Security">
