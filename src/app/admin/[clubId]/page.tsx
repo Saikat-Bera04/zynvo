@@ -8,6 +8,7 @@ import EventTab from "../../../components/eventTab";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import MemberSelect from "@/components/MemberSelect";
 
 export default function ClubAdminPage() {
   const params = useParams();
@@ -249,34 +250,31 @@ export default function ClubAdminPage() {
 
             <section className="bg-zinc-900 border border-yellow-400/30 rounded-2xl p-6">
               <h2 className="text-xl font-semibold mb-4 text-yellow-300">Core Members</h2>
-              {[1, 2, 3].map((num) => (
-                <div key={num} className="flex flex-col gap-2 border-b border-yellow-400/20 pb-4 mb-4">
-                  <span>
-                    Core Member {num}:{" "}
-                    <span className="text-yellow-200">
-                      {clubData[`coremember${num}`] ?? '—'}
+              {[1, 2, 3].map((num) => {
+                const currentValue = num === 1 ? coremember1 : num === 2 ? coremember2 : coremember3;
+                const setter = num === 1 ? setCoreMember1 : num === 2 ? setCoreMember2 : setCoreMember3;
+                return (
+                  <div key={num} className="flex flex-col gap-2 border-b border-yellow-400/20 pb-4 mb-4">
+                    <span>
+                      Core Member {num}:{" "}
+                      <span className="text-yellow-200">
+                        {clubData[`coremember${num}`] ?? '—'}
+                      </span>
                     </span>
-                  </span>
-                  <input
-                    type="text"
-                    placeholder={`Update Core Member ${num} Email`}
-                    className="bg-black border border-yellow-500/40 text-yellow-400 p-2 rounded-lg"
-                    onChange={(e) =>
-                      num === 1
-                        ? setCoreMember1(e.target.value)
-                        : num === 2
-                        ? setCoreMember2(e.target.value)
-                        : setCoreMember3(e.target.value)
-                    }
-                  />
-                  <button
-                    onClick={removeCoreMembers}
-                    className="text-xs text-red-400 hover:text-red-300 w-fit"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+                    <MemberSelect
+                      members={clubData.members ?? []}
+                      value={currentValue ?? ''}
+                      onChange={setter}
+                    />
+                    <button
+                      onClick={removeCoreMembers}
+                      className="text-xs text-red-400 hover:text-red-300 w-fit"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
               <button
                 onClick={addCoreMembers}
                 className="bg-yellow-400 text-black px-4 py-2 rounded-lg hover:bg-yellow-300 font-semibold"
