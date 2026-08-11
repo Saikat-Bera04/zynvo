@@ -23,6 +23,7 @@ import {
 import axios from 'axios';
 import { fetchClubsByCollege } from '@/app/api/hooks/useClubs';
 import { useRouter } from 'next/navigation';
+import MemberSelect from '@/components/MemberSelect';
 
 const CreateClubModal: React.FC<CreateClubModalProps> = ({
   isOpen,
@@ -54,6 +55,20 @@ const CreateClubModal: React.FC<CreateClubModalProps> = ({
   const [isLoadingClubs, setIsLoadingClubs] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [typeSearch, setTypeSearch] = useState('');
+
+  const searchUsers = async (query: string): Promise<any[]> => {
+    if (!token || !query.trim()) return [];
+    try {
+      const res = await fetch(`/api/v1/user/SearchUser?search=${encodeURIComponent(query)}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.users ?? data.resp ?? data ?? [];
+    } catch {
+      return [];
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -637,15 +652,12 @@ const CreateClubModal: React.FC<CreateClubModalProps> = ({
               >
                 Founder/Club President Email*
               </label>
-              <input
-                id="FounderEmail"
-                name="FounderEmail"
-                type="text"
-                required
-                placeholder="Enter founder's name"
+              <MemberSelect
+                members={[]}
                 value={clubData.FounderEmail}
-                onChange={handleChange}
-                className="w-full bg-gray-800 border border-gray-700 focus:border-yellow-500 text-white px-4 py-2 rounded-lg focus:outline-none"
+                onChange={(email) => setClubData((prev) => ({ ...prev, FounderEmail: email }))}
+                placeholder="Search for founder by name or email"
+                onSearch={searchUsers}
               />
             </div>
 
