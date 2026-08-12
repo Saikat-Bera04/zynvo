@@ -336,10 +336,10 @@ function Faq() {
           Check your spam folder, then try again from this page. If it still
           doesn&apos;t arrive, contact{' '}
           <a
-            href="mailto:privacy@zynvosocial.com"
+            href="mailto:hq@zynvosocial.com"
             className="text-yellow-400 underline-offset-2 hover:underline"
           >
-            privacy@zynvosocial.com
+            hq@zynvosocial.com
           </a>
           .
         </QA>

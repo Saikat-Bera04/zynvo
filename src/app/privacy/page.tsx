@@ -411,7 +411,15 @@ export default function PrivacyPolicyPage() {
             Zynvo is intended for users who are at least 13 years old. We do
             not knowingly collect personal information from children under 13.
             If you believe a child under 13 has created an account, contact us
-            at {PRIVACY_EMAIL} and we will delete it.
+            at {PRIVACY_EMAIL} and we will delete it. See our{' '}
+            <Link
+              className="text-yellow-400 underline-offset-2 hover:underline"
+              href="/child-safety"
+            >
+              Child Safety Standards
+            </Link>{' '}
+            page for our full policy on protecting minors, including how to
+            report a concern.
           </p>
         </Section>
 
@@ -477,7 +485,14 @@ export default function PrivacyPolicyPage() {
           >
             /_markdown/privacy
           </Link>{' '}
-          for screen readers and agentic tools.
+          for screen readers and agentic tools. See also our{' '}
+          <Link
+            className="text-yellow-400 underline-offset-2 hover:underline"
+            href="/child-safety"
+          >
+            Child Safety Standards
+          </Link>
+          .
         </p>
       </div>
     </main>
