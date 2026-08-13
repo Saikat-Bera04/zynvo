@@ -71,7 +71,7 @@ const resolveClubImageUrl = (url?: string | null) => {
 const buildClubFallbackLogo = (clubName: string) =>
   `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(clubName)}&fontSize=42&backgroundColor=111827,facc15,1f2937&textColor=facc15,ffffff`;
 
-const fallbackClubs: TopClub[] = kolkataCollegeClubs.slice(0, 8).map((club) => ({
+const fallbackClubs: TopClub[] = kolkataCollegeClubs.map((club) => ({
   id: club.id,
   name: club.clubName,
   collegeName: club.collegeName,
@@ -104,7 +104,6 @@ const readCachedTopClubs = (): TopClub[] => {
     const parsed = JSON.parse(raw) as CachedTopClubsPayload;
     if (!Array.isArray(parsed?.clubs)) return [];
     return parsed.clubs
-      .slice(0, 8)
       .map((club, index) => mapApiClubToTopClub(club as TopClubApiItem, index));
   } catch {
     return [];
@@ -115,7 +114,7 @@ const writeCachedTopClubs = (clubs: TopClub[]) => {
   if (typeof window === 'undefined') return;
   try {
     const payload: CachedTopClubsPayload = {
-      clubs: clubs.slice(0, 8),
+      clubs,
       cachedAt: Date.now(),
     };
     localStorage.setItem(TOP_CLUBS_CACHE_KEY, JSON.stringify(payload));
@@ -149,7 +148,6 @@ export default function TopClubs() {
 
         const fetchedClubs = response.data?.resp || [];
         const mappedClubs = fetchedClubs
-          .slice(0, 8)
           .map((club, index) => mapApiClubToTopClub(club, index));
         setAuthRequiredForLogos(false);
         setClubs(mappedClubs);
