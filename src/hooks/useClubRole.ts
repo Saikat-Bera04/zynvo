@@ -22,6 +22,6 @@ export async function checkClubRole(token?: string): Promise<any> {
       return { msg: 'Unexpected response from server', authorized: false };
     }
   } catch {
-    return { msg: 'Error occurred while checking club role', authorized : false };
+    return { msg: 'Hey There', authorized : false };
   }
 }

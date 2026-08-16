@@ -195,6 +195,13 @@ const Eventid = () => {
     reason: CollegeBlockReason;
   }>({ open: false, reason: 'mismatch' });
 
+  // 'portrait' = taller than wide, 'landscape' = wider than tall or square
+  const [posterOrientation, setPosterOrientation] = useState<'portrait' | 'landscape'>('landscape');
+  const handlePosterLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setPosterOrientation(img.naturalHeight > img.naturalWidth ? 'portrait' : 'landscape');
+  };
+
   // CSV sync state: lastSince (newest joinedAt), etag, last updated time, sync in progress, badge count
   const [csvLastSince, setCsvLastSince] = useState<string | null>(null);
   const [csvEtag, setCsvEtag] = useState<string | null>(null);
@@ -228,14 +235,19 @@ const Eventid = () => {
       const result = await syncParticipantsCsv(
         id,
         currentLastSince,
-        currentEtag
+        currentEtag,
+        token
       );
       setCsvLastSince(result.lastSince);
       setCsvEtag(result.etag);
       setLastCsvUpdatedAt(new Date());
       setSyncBackoffMs(0);
       if (result.appended > 0) {
-        setCsvAppendedCount((c) => c + result.appended);
+        // A baseline sync returns every participant, not just new arrivals —
+        // refresh the list but keep it out of the "N new" badge.
+        if (!result.isBaseline) {
+          setCsvAppendedCount((c) => c + result.appended);
+        }
         queryClient.invalidateQueries({ queryKey: ['participants', id] });
       }
     } catch (err) {
@@ -244,12 +256,14 @@ const Eventid = () => {
         setCsvEtag(null);
         setSyncBackoffMs(0);
         try {
-          const result = await syncParticipantsCsv(id, null, null);
+          const result = await syncParticipantsCsv(id, null, null, token);
           setCsvLastSince(result.lastSince);
           setCsvEtag(result.etag);
           setLastCsvUpdatedAt(new Date());
           if (result.appended > 0) {
-            setCsvAppendedCount((c) => c + result.appended);
+            if (!result.isBaseline) {
+              setCsvAppendedCount((c) => c + result.appended);
+            }
             queryClient.invalidateQueries({ queryKey: ['participants', id] });
           }
         } finally {
@@ -371,6 +385,7 @@ const Eventid = () => {
     page: participantsPage,
     limit: participantsLimit,
     enabled: activeTab === 'attendees' && !!id && canViewAttendees,
+    token,
   });
 
   const participants = participantsData?.data || [];
@@ -961,10 +976,26 @@ const Eventid = () => {
 
       {/* Hero — framed panel for clearer hierarchy on dark bg */}
       <section className="mb-8 pb-8 border-b border-gray-800">
-        <div className="rounded-2xl border border-yellow-500/25 bg-[#0B0B0B] p-4 shadow-lg shadow-black/20 sm:p-6 md:p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* Left: Event Info */}
-            <div className="lg:col-span-2 space-y-4">
+        <div className="rounded-2xl border border-yellow-500/25 bg-[#0B0B0B] shadow-lg shadow-black/20 overflow-hidden">
+          {/* Poster — adapts to orientation: portraits centered at natural width, landscapes fill full width */}
+          {data.posterUrl && (
+            <div className={`w-full bg-gray-950 flex items-center justify-center ${posterOrientation === 'landscape' ? '' : 'py-4'}`}>
+              <img
+                src={data.posterUrl}
+                alt="Event Poster"
+                onLoad={handlePosterLoad}
+                className={
+                  posterOrientation === 'landscape'
+                    ? 'w-full max-h-[480px] object-contain block'
+                    : 'max-h-[560px] w-auto max-w-full object-contain block rounded-lg'
+                }
+              />
+            </div>
+          )}
+          <div className="p-4 sm:p-6 md:p-8">
+            <div className="space-y-4">
+            {/* Event Info */}
+            <div className="space-y-4">
               <div>
                 <p className="text-yellow-400 text-xs uppercase tracking-wider mb-2">
                   Event
@@ -1269,26 +1300,7 @@ const Eventid = () => {
                 />
               )}
             </div>
-
-            {/* Right: Poster */}
-            <div className="lg:col-span-1">
-              <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden bg-gray-900 border border-gray-800">
-                {data.posterUrl ? (
-                  <Image
-                    src={data.posterUrl}
-                    alt="Event Poster"
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                    <CalendarIcon className="w-12 h-12 mb-2 opacity-50" />
-                    <span className="text-xs">Poster coming soon</span>
-                  </div>
-                )}
-              </div>
-            </div>
+          </div>
           </div>
         </div>
       </section>
@@ -1422,13 +1434,10 @@ const Eventid = () => {
                       <div className="space-y-2">
                         <p className="text-sm text-gray-300">Payment QR Code</p>
                         <div className="bg-white p-3 rounded-lg inline-block">
-                          <Image
+                          <img
                             src={data.paymentQRCode}
                             alt="Payment QR Code"
-                            width={200}
-                            height={200}
-                            className="w-auto h-auto"
-                            priority={false}
+                            className="w-full h-auto block max-w-[200px]"
                           />
                         </div>
                         <a
@@ -1844,7 +1853,7 @@ const Eventid = () => {
                       <Button
                         onClick={async () => {
                           try {
-                            await downloadParticipantsCSV(id);
+                            await downloadParticipantsCSV(id, token);
                           } catch (error) {
                             console.error('Error downloading CSV:', error);
                           }
@@ -2092,12 +2101,15 @@ const Eventid = () => {
           {/* Compact Poster Card */}
           {data.posterUrl && (
             <div className="rounded-xl bg-[#0B0B0B] border border-gray-800 p-3">
-              <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-gray-900">
-                <Image
+              <div className={`rounded-lg overflow-hidden bg-gray-950 w-full flex items-center justify-center ${posterOrientation === 'portrait' ? 'py-2' : ''}`}>
+                <img
                   src={data.posterUrl}
                   alt="Event Poster"
-                  fill
-                  className="object-cover"
+                  className={
+                    posterOrientation === 'landscape'
+                      ? 'w-full max-h-[320px] object-contain block'
+                      : 'max-h-[400px] w-auto max-w-full object-contain block rounded-md'
+                  }
                 />
               </div>
             </div>
