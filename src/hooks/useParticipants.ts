@@ -1,6 +1,11 @@
 /**
  * Participants hook — all requests go through the same-origin proxy.
- * Auth headers are injected server-side; no localStorage tokens are used.
+ *
+ * Auth: the proxy prefers a server-side Clerk session token and falls back to
+ * the caller's Authorization header (see lib/server/proxy.ts). The event page
+ * still authenticates with the legacy JWT in localStorage, and the dev proxy
+ * bypasses Clerk entirely, so callers MUST forward that token when they have
+ * one — otherwise these endpoints return 401.
  */
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -43,16 +48,24 @@ export interface UseParticipantsOptions {
   page?: number;
   limit?: number;
   enabled?: boolean;
+  /** Legacy backend JWT. Forwarded as a bearer token when present. */
+  token?: string | null;
+}
+
+/** Bearer header for the legacy backend JWT, omitted when there is no token. */
+function authHeaders(token?: string | null): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function fetchParticipants(
   eventId: string,
   page: number = 1,
-  limit: number = 50
+  limit: number = 50,
+  token?: string | null
 ): Promise<ParticipantsResponse> {
   const response = await axios.get<ParticipantsResponse>(
     `${API_BASE}/v1/events/participants/${eventId}`,
-    { params: { page, limit } }
+    { params: { page, limit }, headers: authHeaders(token) }
   );
   return response.data;
 }
@@ -62,10 +75,11 @@ export function useParticipants({
   page = 1,
   limit = 50,
   enabled = true,
+  token,
 }: UseParticipantsOptions) {
   return useQuery<ParticipantsResponse, Error>({
     queryKey: ['participants', eventId, page, limit],
-    queryFn: () => fetchParticipants(eventId, page, limit),
+    queryFn: () => fetchParticipants(eventId, page, limit, token),
     enabled: enabled && !!eventId,
     staleTime: 30000,
     retry: 2,
@@ -132,6 +146,12 @@ export interface SyncCsvResult {
   appended: number;
   etag: string | null;
   lastSince: string | null;
+  /**
+   * True when the request carried no `since`, so the response is the full
+   * participant list rather than an incremental delta. Callers should not
+   * report these rows as newly arrived.
+   */
+  isBaseline: boolean;
 }
 
 export class InvalidSinceError extends Error {
@@ -141,21 +161,47 @@ export class InvalidSinceError extends Error {
   }
 }
 
+/**
+ * Newest parseable `joinedAt` across the rows, or `fallback` when none parse.
+ * Computed as a max rather than taking the last row — the backend's sort order
+ * is not guaranteed ascending, and reading it wrong would walk `since`
+ * backwards and re-fetch the same rows on every poll.
+ */
+function newestJoinedAt(
+  rows: { joinedAt?: string }[],
+  fallback: string | null
+): string | null {
+  let bestValue: string | null = null;
+  let bestTime = -Infinity;
+
+  for (const row of rows) {
+    if (!row.joinedAt) continue;
+    const time = new Date(row.joinedAt).getTime();
+    if (Number.isNaN(time) || time <= bestTime) continue;
+    bestTime = time;
+    bestValue = row.joinedAt;
+  }
+
+  return bestValue ?? fallback;
+}
+
 export async function syncParticipantsCsv(
   eventId: string,
   lastSince: string | null,
-  etag: string | null
+  etag: string | null,
+  token?: string | null
 ): Promise<SyncCsvResult> {
+  const isBaseline = !lastSince;
   const params = new URLSearchParams({ format: 'csv' });
   if (lastSince) params.set('since', lastSince);
   const url = `${API_BASE}/v1/events/participants/${eventId}?${params}`;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = authHeaders(token);
   if (etag) headers['If-None-Match'] = etag;
 
   const res = await fetch(url, { method: 'GET', headers });
 
   if (res.status === 304) {
-    return { appended: 0, etag, lastSince };
+    return { appended: 0, etag, lastSince, isBaseline };
   }
 
   if (res.status === 400) {
@@ -175,18 +221,23 @@ export async function syncParticipantsCsv(
   const newCsv = await res.text();
   const newEtag = res.headers.get('etag') ?? etag;
   const appendedRows = parseCsv(newCsv);
-  const newestJoinedAt = appendedRows.length
-    ? (appendedRows.at(-1)?.joinedAt ?? lastSince)
-    : lastSince;
 
-  return { appended: appendedRows.length, etag: newEtag, lastSince: newestJoinedAt };
+  return {
+    appended: appendedRows.length,
+    etag: newEtag,
+    lastSince: newestJoinedAt(appendedRows, lastSince),
+    isBaseline,
+  };
 }
 
-export async function downloadParticipantsCSV(eventId: string): Promise<void> {
+export async function downloadParticipantsCSV(
+  eventId: string,
+  token?: string | null
+): Promise<void> {
   try {
     const response = await fetch(
       `${API_BASE}/v1/events/participants/${eventId}?format=csv`,
-      { method: 'GET' }
+      { method: 'GET', headers: authHeaders(token) }
     );
 
     if (!response.ok) {
