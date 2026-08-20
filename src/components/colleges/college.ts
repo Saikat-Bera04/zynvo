@@ -3616,5 +3616,13 @@ State: 'Punjab',
   {
     college: 'Lovely Professional University, Phagwara, Punjab',
     State: 'Punjab',
-  }
+  },
+  {
+    college: 'ACE Engineering College, Kolkata, West Bengal',
+    State: 'West Bengal',
+  },
+  {
+    college: 'Chennai Institute of Technology, Chennai, Tamil Nadu',
+    State: 'Tamil Nadu',
+  },
 ];
