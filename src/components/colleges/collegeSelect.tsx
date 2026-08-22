@@ -33,15 +33,11 @@ export default function CollegeSearchSelect({
   );
 
   useEffect(() => {
-    const inList = colleges.some(
-      (college) =>
-        college.college === value && college.college.toLowerCase() !== 'other'
-    );
-    if (value && inList) {
-      setIsOther(false);
-    } else if (value && !inList) {
-      setIsOther(true);
-    }
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const inList = listedColleges.some((college) => college.college === trimmed);
+    setIsOther(!inList);
   }, [value, colleges]);
 
   // Filter colleges based on search term, always keep Other at the bottom
@@ -137,6 +133,11 @@ export default function CollegeSearchSelect({
     }
   };
 
+  const handleCustomBlur = () => {
+    const trimmed = value.trim();
+    if (trimmed !== value) onChange(trimmed);
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Display Input */}
@@ -169,11 +170,18 @@ export default function CollegeSearchSelect({
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute z-20 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto scrollbar-overlay">
+          {filteredColleges.length === 1 && (
+            <div className="px-4 py-2 text-xs text-gray-400">
+              No matches — choose Other to type your college
+            </div>
+          )}
           {filteredColleges.map((college, index) => (
             <div
               key={`${college.college}-${index}`}
               className={`px-4 py-3 cursor-pointer transition-colors ${
-                college.college === OTHER_COLLEGE.college ? 'border-t border-gray-700' : ''
+                college.college === OTHER_COLLEGE.college
+                  ? 'border-t border-gray-700'
+                  : ''
               } ${
                 index === highlightedIndex
                   ? 'bg-yellow-500 text-black'
@@ -194,16 +202,24 @@ export default function CollegeSearchSelect({
       )}
 
       {isOther && (
-        <input
-          ref={customInputRef}
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="mt-2 bg-gray-800 text-white w-full py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-yellow-500"
-          placeholder="Enter your college/university name"
-          required={required}
-          autoComplete="off"
-        />
+        <div className="mt-2 space-y-1">
+          <input
+            ref={customInputRef}
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={handleCustomBlur}
+            className="bg-gray-800 text-white w-full py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-yellow-500"
+            placeholder="Enter your college/university name"
+            required={required}
+            autoComplete="off"
+            minLength={2}
+            maxLength={200}
+          />
+          <p className="text-xs text-gray-400">
+            Type your full college name. Do not leave this as &quot;Other&quot;.
+          </p>
+        </div>
       )}
     </div>
   );

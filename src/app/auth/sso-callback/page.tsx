@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { toast } from 'sonner';
 import CollegeSearchSelect from '@/components/colleges/collegeSelect';
-import { collegesWithClubs } from '@/components/colleges/college';
+import { collegesWithClubs, isAcceptableCollegeName } from '@/components/colleges/college';
 import DiceBearAvatar from '@/components/DicebearAvatars';
 import { resolveSsoIntentStable } from '@/lib/ssoIntent';
 import {
@@ -383,12 +383,9 @@ function SSOCallbackContent() {
             onSubmit={async (e) => {
               e.preventDefault();
               const college = collegeName.trim();
-              const validCollege = collegesWithClubs.some(
-                (c) => c.college === college
-              );
-              if (!college || !validCollege) {
+              if (!isAcceptableCollegeName(college)) {
                 toast.error(
-                  'Please select your college/university from the list'
+                  'Please select your college from the list, or choose Other and enter the name'
                 );
                 return;
               }

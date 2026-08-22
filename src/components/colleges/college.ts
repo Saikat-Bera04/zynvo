@@ -3265,6 +3265,14 @@ State: 'Punjab',
     college: 'NIT Rourkela',
     State: 'Odisha',
   },
+  {
+    college: 'KIIT (Kalinga Institute of Industrial Technology), Bhubaneswar, Odisha',
+    State: 'Odisha',
+  },
+  {
+    college: 'Techno India Institute of Technology',
+    State: 'West Bengal',
+  },
 
 
   {
@@ -3626,3 +3634,13 @@ State: 'Punjab',
     State: 'Tamil Nadu',
   },
 ];
+
+/** Listed college, or a custom name entered via "Other" (not the literal "Other"). */
+export function isAcceptableCollegeName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  if (trimmed.toLowerCase() === 'other') return false;
+  if (collegesWithClubs.some((c) => c.college === trimmed)) return true;
+  // Custom college via Other — allow typed names
+  return trimmed.length >= 2 && trimmed.length <= 200;
+}

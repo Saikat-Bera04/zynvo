@@ -15,7 +15,7 @@ import {
 } from 'react-icons/fi';
 import { FaGoogle, FaApple, FaFacebook } from 'react-icons/fa';
 import DiceBearAvatar from '@/components/DicebearAvatars';
-import { collegesWithClubs } from '@/components/colleges/college';
+import { collegesWithClubs, isAcceptableCollegeName } from '@/components/colleges/college';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { signupRes } from '@/types/global-Interface';
@@ -231,13 +231,14 @@ export default function SignUp() {
 
     if (!agreeToTerms) return;
 
-    // Validate college is selected from the actual list — blocks browser-autofilled garbage values
-    const validCollege = collegesWithClubs.some(
-      (c) => c.college === formData.collegeName
-    );
-    if (!formData.collegeName.trim() || !validCollege) {
-      setCollegeError('Please select your college/university from the list');
-      toast.error('Please select your college/university from the list');
+    // Allow listed colleges or a custom name entered via "Other"
+    if (!isAcceptableCollegeName(formData.collegeName)) {
+      setCollegeError(
+        'Please select your college from the list, or choose Other and enter the name'
+      );
+      toast.error(
+        'Please select your college from the list, or choose Other and enter the name'
+      );
       return;
     }
     setCollegeError('');
