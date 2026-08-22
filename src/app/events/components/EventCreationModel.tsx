@@ -668,6 +668,14 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
         university: formData.university?.trim(),
         contactEmail: formData.contactEmail?.trim(),
         image: imageLink,
+        // Backend support for various field names
+        EventUrl: formData.eventWebsite,
+        EventWebsite: formData.eventWebsite,
+        registrationForm: formData.form,
+        Form: formData.form,
+        link1: formData.eventWebsite,
+        link2: formData.form,
+        link3: formData.whatsappLink,
       };
 
       if (
@@ -2017,6 +2025,18 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         {
                           label: 'Contact phone',
                           value: formData.contactPhone || '—',
+                        },
+                        {
+                          label: 'Event Website',
+                          value: formData.eventWebsite || '—',
+                        },
+                        {
+                          label: 'Reg. Form',
+                          value: formData.form || '—',
+                        },
+                        {
+                          label: 'WhatsApp',
+                          value: formData.whatsappLink || '—',
                         },
                       ].map(({ label, value }) => (
                         <div key={label} className="bg-gray-800/80 px-4 py-3">

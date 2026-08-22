@@ -141,6 +141,8 @@ const Eventid = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fetchNonce, setFetchNonce] = useState(0);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [hasConfirmedExternalForm, setHasConfirmedExternalForm] =
+    useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -535,14 +537,20 @@ const Eventid = () => {
             whatsappLink:
               res.data.response.whatsappLink ||
               res.data.response.whatsappGroupLink ||
+              (res.data.response as any).whatsapp ||
+              (res.data.response as any).link3 ||
               '',
             eventWebsite:
               res.data.response.eventWebsite ||
               res.data.response.EventUrl ||
+              (res.data.response as any).website ||
+              (res.data.response as any).link1 ||
               '',
             form:
               res.data.response.form ||
               res.data.response.registrationForm ||
+              (res.data.response as any).Form ||
+              (res.data.response as any).link2 ||
               '',
             isPaidEvent: hasPaidEvent,
             acceptanceBased,
@@ -587,6 +595,13 @@ const Eventid = () => {
   const handleRegistration = async () => {
     if (!token) {
       toast.error('Please login to register for this event');
+      return;
+    }
+
+    if (data.eventWebsite && !hasConfirmedExternalForm) {
+      toast.error(
+        'Please open the Event Website link above, complete what’s required there, then confirm and click Register.'
+      );
       return;
     }
 
@@ -1062,6 +1077,71 @@ const Eventid = () => {
                 </div>
               )}
 
+              {/* Event Website — top card when organizer added one */}
+              {data.eventWebsite && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Globe className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-2 min-w-0">
+                      <p className="text-sm font-semibold text-amber-200">
+                        Event Website
+                      </p>
+                      {!isUserAttendingEvent() && !isFounder ? (
+                        <>
+                          <p className="text-sm text-gray-300 leading-relaxed">
+                            Filling out the form / details on this Event Website
+                            is{' '}
+                            <span className="text-amber-200 font-medium">
+                              mandatory
+                            </span>{' '}
+                            for a successful registration. Complete it first,
+                            then click Register on Zynvo. After that, join the
+                            WhatsApp group.
+                          </p>
+                          <ol className="list-decimal list-inside text-xs text-gray-400 space-y-1">
+                            <li>
+                              Open the Event Website and fill what’s required
+                            </li>
+                            <li>
+                              Click Register on Zynvo to complete registration
+                            </li>
+                            <li>Join the WhatsApp group when prompted</li>
+                          </ol>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                          Visit the official event website for more information.
+                        </p>
+                      )}
+                      <a
+                        href={data.eventWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg text-sm font-medium transition-colors"
+                      >
+                        <span>Visit Website</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                  {signedin && !isUserAttendingEvent() && !isFounder && (
+                    <label className="flex items-start gap-2 cursor-pointer select-none pt-1 border-t border-amber-500/20">
+                      <input
+                        type="checkbox"
+                        checked={hasConfirmedExternalForm}
+                        onChange={(e) =>
+                          setHasConfirmedExternalForm(e.target.checked)
+                        }
+                        className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-800 text-yellow-500 focus:ring-yellow-500"
+                      />
+                      <span className="text-sm text-gray-200">
+                        I have filled out the form on the Event Website above
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
+
               {/* Action Buttons — stack on narrow screens */}
               <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-2">
                 {isFounder && (
@@ -1113,9 +1193,15 @@ const Eventid = () => {
                     <>
                       <Button
                         onClick={handleRegistration}
-                        disabled={isRegistering || isRegistrationDisabled}
+                        disabled={
+                          isRegistering ||
+                          isRegistrationDisabled ||
+                          (!!data.eventWebsite && !hasConfirmedExternalForm)
+                        }
                         className={`min-h-11 w-full sm:w-auto rounded-lg px-5 py-2.5 font-medium ${
-                          isRegistering || isRegistrationDisabled
+                          isRegistering ||
+                          isRegistrationDisabled ||
+                          (!!data.eventWebsite && !hasConfirmedExternalForm)
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             : 'bg-amber-900 hover:bg-amber-950 text-yellow-200'
                         }`}
@@ -1126,7 +1212,9 @@ const Eventid = () => {
                             ? 'Event Ended'
                             : isEventFull
                               ? 'Event Full'
-                              : 'Register Now'}
+                              : data.eventWebsite && !hasConfirmedExternalForm
+                                ? 'Visit Event Website first, then Register'
+                                : 'Register Now'}
                       </Button>
                       {data.maxParticipants && (
                         <div className="flex items-center gap-2 text-sm text-gray-300 bg-gray-900/60 px-4 py-2 border border-gray-800 rounded-lg">
@@ -1356,59 +1444,6 @@ const Eventid = () => {
                 {data.description ||
                   'Event description will be available soon...'}
               </p>
-
-              {/* Event Website Link */}
-              {data.eventWebsite && (
-                <div className="mb-6 p-4 bg-gray-900/70 border border-gray-800 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <Globe className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-white mb-2">
-                        Event Website
-                      </h3>
-                      <p className="text-gray-300 text-sm mb-3">
-                        Visit the official event website for more information.
-                      </p>
-                      <a
-                        href={data.eventWebsite}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
-                      >
-                        <span>Visit Website</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Registration Form Link */}
-              {data.form && (
-                <div className="mb-6 p-4 bg-gray-900/70 border border-gray-800 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <CheckSquare className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-white mb-2">
-                        Registration Form
-                      </h3>
-                      <p className="text-gray-300 text-sm mb-3">
-                        Fill out the registration form to participate in this
-                        event.
-                      </p>
-                      <a
-                        href={data.form}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg font-medium transition-colors"
-                      >
-                        <span>Open Form</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Paid Event Details - Only for Event Founders */}
               {isFounder && data.isPaidEvent && (
@@ -2285,9 +2320,12 @@ const Eventid = () => {
                 Join WhatsApp Group!
               </h2>
               <p className="text-gray-300 mb-6">
-                You've successfully registered! Join our WhatsApp group to stay
-                updated with event announcements and connect with other
-                participants.
+                You&apos;ve registered on Zynvo
+                {data.eventWebsite
+                  ? ' — make sure you also completed what’s required on the Event Website'
+                  : ''}
+                . Join the WhatsApp group next to get announcements and connect
+                with other participants.
               </p>
               <div className="space-y-3">
                 <a

@@ -143,7 +143,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
         collegeStudentsOnly: eventData.collegeStudentsOnly || false,
         noParticipationFee: !eventData.participationFee,
         coreTeamOnly: false,
-        eventWebsite: eventData.EventUrl || '',
+        eventWebsite: eventData.eventWebsite || eventData.EventUrl || eventData.link1 || '',
         eventStartDate: eventData.startDate || '',
         eventEndDate: eventData.endDate || '',
         applicationStartDate: eventData.applicationStartDate || '',
@@ -151,8 +151,8 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
         prizes: eventData.prizes || '',
         contactEmail: eventData.contactEmail || '',
         contactPhone: eventData.contactPhone || '',
-        form: eventData.Form || '',
-        whatsappLink: eventData.whatsappLink || '',
+        form: eventData.form || eventData.Form || eventData.registrationForm || eventData.link2 || '',
+        whatsappLink: eventData.whatsappLink || eventData.whatsappGroupLink || eventData.link3 || '',
         isPaidEvent: eventData.isPaid || false,
         paymentQRCode: eventData.qrCodeUrl || '',
         paymentAmount: parseInt(eventData.Fees || '0', 10),
@@ -496,6 +496,14 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
     // Build payload - only include paid event fields if it's a paid event
     const payload: any = {
       ...formData,
+      // Backend support for various field names
+      EventUrl: formData.eventWebsite,
+      EventWebsite: formData.eventWebsite,
+      registrationForm: formData.form,
+      Form: formData.form,
+      link1: formData.eventWebsite,
+      link2: formData.form,
+      link3: formData.whatsappLink,
     };
     if (imageLink) payload.image = imageLink;
 
@@ -1006,6 +1014,81 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                     </p>
                   </div>
 
+                  <div>
+                    <label
+                      htmlFor="eventWebsite"
+                      className="block text-sm font-medium text-yellow-400 mb-1"
+                    >
+                      {formData.eventMode === 'online' ? 'Platform Link (e.g. Google Meet, Zoom)' : 'Event Website (optional)'}
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Globe className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="eventWebsite"
+                        name="eventWebsite"
+                        type="url"
+                        value={formData.eventWebsite}
+                        onChange={handleChange}
+                        className="w-full bg-gray-800 border border-gray-700 focus:border-yellow-500 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none"
+                        placeholder="https://example.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="form"
+                      className="block text-sm font-medium text-yellow-400 mb-1"
+                    >
+                      Registration/Application Form (optional)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Globe className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="form"
+                        name="form"
+                        type="url"
+                        value={formData.form || ''}
+                        onChange={handleChange}
+                        className="w-full bg-gray-800 border border-gray-700 focus:border-yellow-500 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none"
+                        placeholder="https://forms.google.com/... or https://typeform.com/..."
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Add a link to your registration form (Google Forms, Typeform, etc.)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="whatsappLink"
+                      className="block text-sm font-medium text-yellow-400 mb-1"
+                    >
+                      WhatsApp Group Link (optional)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Globe className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="whatsappLink"
+                        name="whatsappLink"
+                        type="url"
+                        value={formData.whatsappLink || ''}
+                        onChange={handleChange}
+                        className="w-full bg-gray-800 border border-gray-700 focus:border-yellow-500 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none"
+                        placeholder="https://chat.whatsapp.com/..."
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Share WhatsApp group link with registered participants
+                    </p>
+                  </div>
+
                   {/* Fee — single Free / Paid selector */}
                   <div className="border-t border-gray-800 pt-4">
                     <p className="text-sm font-medium text-yellow-400 mb-3">Participation Fee</p>
@@ -1421,6 +1504,9 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                         { label: 'Fee', value: formData.isPaidEvent ? `₹${formData.paymentAmount || '?'}` : 'Free' },
                         { label: 'Contact email', value: formData.contactEmail || '—' },
                         { label: 'Contact phone', value: formData.contactPhone || '—' },
+                        { label: 'Event Website', value: formData.eventWebsite || '—' },
+                        { label: 'Reg. Form', value: formData.form || '—' },
+                        { label: 'WhatsApp', value: formData.whatsappLink || '—' },
                       ].map(({ label, value }) => (
                         <div key={label} className="bg-gray-800/80 px-4 py-3">
                           <p className="text-xs text-gray-500 mb-0.5">{label}</p>

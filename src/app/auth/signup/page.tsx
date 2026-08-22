@@ -455,6 +455,8 @@ export default function SignUp() {
       return;
     }
     try {
+      // Must match the page origin. Production Clerk rejects localhost unless
+      // http://localhost:3000 is allowlisted (or use pk_test_ keys locally).
       const origin = window.location.origin;
       setSsoIntentBeforeOAuth('signup');
       const rt = peekReturnTo();
@@ -466,14 +468,26 @@ export default function SignUp() {
         redirectUrl: `${origin}${callbackPath}`,
         redirectUrlComplete: `${origin}${callbackPath}`,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('SSO redirect error', err);
       const clerkError = err as {
-        errors?: { code?: string }[];
+        errors?: { code?: string; meta?: { param_name?: string } }[];
         code?: string;
         message?: string;
       };
       const clerkCode = clerkError.errors?.[0]?.code || clerkError.code;
+
+      if (
+        clerkCode === 'form_param_value_invalid' &&
+        clerkError.errors?.[0]?.meta?.param_name === 'redirect_url'
+      ) {
+        toast.error(
+          'Clerk blocked this redirect. Add http://localhost:3000 to Allowed redirect URLs in the Clerk production dashboard, or use development (pk_test_) keys locally.',
+          { duration: 10000 }
+        );
+        return;
+      }
+
       if (
         clerkCode === 'session_exists' ||
         /session.*exist/i.test(clerkError.message || '')

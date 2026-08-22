@@ -113,6 +113,8 @@ export default function SignIn() {
     }
     try {
       console.log('Starting Google OAuth redirect...');
+      // Must match the page origin. Production Clerk rejects localhost unless
+      // http://localhost:3000 is allowlisted (or use pk_test_ keys locally).
       const origin = window.location.origin;
       setSsoIntentBeforeOAuth('signin');
       const rt = peekReturnTo();
@@ -127,7 +129,20 @@ export default function SignIn() {
     } catch (err: any) {
       console.error('SSO redirect error:', err);
       console.error('SSO error details:', JSON.stringify(err?.errors, null, 2));
+
       const clerkCode = err?.errors?.[0]?.code || err?.code;
+
+      if (
+        clerkCode === 'form_param_value_invalid' &&
+        err?.errors?.[0]?.meta?.param_name === 'redirect_url'
+      ) {
+        toast.error(
+          'Clerk blocked this redirect. Add http://localhost:3000 to Allowed redirect URLs in the Clerk production dashboard, or use development (pk_test_) keys locally.',
+          { duration: 10000 }
+        );
+        return;
+      }
+
       if (
         clerkCode === 'session_exists' ||
         /session.*exist/i.test(err?.message || '')
