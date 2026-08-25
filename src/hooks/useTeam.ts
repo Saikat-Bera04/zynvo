@@ -1,6 +1,9 @@
 /**
  * Team hooks — all requests go through the same-origin proxy (/api/v1/teams/*).
- * Auth is managed server-side; no token is needed in the request headers.
+ *
+ * Auth: the proxy prefers a server-side Clerk session token and falls back to
+ * the caller's Authorization header. Callers MUST forward the legacy JWT from
+ * localStorage when they have one — otherwise these endpoints return 401.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -10,7 +13,12 @@ import { getSafeErrorMessage } from '@/lib/safe-error';
 
 const API_BASE = '/api';
 
-export function useTeam(eventId: string, _token: string | null, enabled = true) {
+/** Bearer header for the legacy backend JWT, omitted when there is no token. */
+function authHeaders(token?: string | null): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export function useTeam(eventId: string, token: string | null, enabled = true) {
   const queryClient = useQueryClient();
   const queryKey = ['my-team', eventId];
 
@@ -22,11 +30,12 @@ export function useTeam(eventId: string, _token: string | null, enabled = true) 
     queryKey,
     queryFn: async () => {
       const res = await axios.get<TeamApiResponse>(
-        `${API_BASE}/v1/teams/my-team/${eventId}`
+        `${API_BASE}/v1/teams/my-team/${eventId}`,
+        { headers: authHeaders(token) }
       );
       return res.data;
     },
-    enabled: !!eventId && enabled,
+    enabled: !!eventId && !!token && enabled,
     staleTime: 30_000,
   });
 
@@ -36,14 +45,15 @@ export function useTeam(eventId: string, _token: string | null, enabled = true) 
     mutationFn: async (payload: CreateTeamPayload) => {
       const res = await axios.post<TeamApiResponse>(
         `${API_BASE}/v1/teams/create`,
-        payload
+        payload,
+        { headers: authHeaders(token) }
       );
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(getSafeErrorMessage(err, 'Failed to create team'));
     },
   });
@@ -52,28 +62,31 @@ export function useTeam(eventId: string, _token: string | null, enabled = true) 
     mutationFn: async (payload: JoinTeamPayload) => {
       const res = await axios.post<TeamApiResponse>(
         `${API_BASE}/v1/teams/join`,
-        payload
+        payload,
+        { headers: authHeaders(token) }
       );
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(getSafeErrorMessage(err, 'Failed to join team'));
     },
   });
 
   const leaveMutation = useMutation({
     mutationFn: async (teamId: string) => {
-      const res = await axios.delete(`${API_BASE}/v1/teams/leave/${teamId}`);
+      const res = await axios.delete(`${API_BASE}/v1/teams/leave/${teamId}`, {
+        headers: authHeaders(token),
+      });
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       toast.success('You have left the team');
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast.error(getSafeErrorMessage(err, 'Failed to leave team'));
     },
   });
