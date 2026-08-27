@@ -137,6 +137,7 @@ const Eventid = () => {
 
   const [forkedUpId, setForkedUpId] = useState<string | null>(null);
   const [eventTeamSize, setEventTeamSize] = useState<number>(1);
+  const [rawEvent, setRawEvent] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fetchNonce, setFetchNonce] = useState(0);
@@ -515,50 +516,69 @@ const Eventid = () => {
 
           // If paymentQRCode/qrCodeUrl exists, treat as paid event even if isPaid/isPaidEvent flag is not set
           const hasPaidEvent = isPaid || !!qrCodeUrl;
+          const eventResponse = res.data.response as any;
 
+          setRawEvent(eventResponse);
           setData({
-            EventName: res.data.response.EventName || '',
-            description: res.data.response.description || '',
-            EventMode: res.data.response.EventMode || '',
-            startDate: res.data.response.startDate || '',
-            endDate: res.data.response.endDate || '',
-            prizes: res.data.response.prizes || '',
-            university: res.data.response.university || '',
+            EventName: eventResponse.EventName || '',
+            description: eventResponse.description || '',
+            EventMode: eventResponse.EventMode || '',
+            EventType: eventResponse.EventType || '',
+            startDate: eventResponse.startDate || '',
+            endDate: eventResponse.endDate || '',
+            prizes: eventResponse.prizes || '',
+            university: eventResponse.university || '',
             venue:
-              res.data.response.Venue || (res.data.response as any).venue || '',
-            collegeStudentsOnly: res.data.response.collegeStudentsOnly ?? false,
-            contactEmail: res.data.response.contactEmail || '',
-            contactPhone: res.data.response.contactPhone || '',
-            applicationStatus: res.data.response.applicationStatus || 'open',
+              eventResponse.Venue || eventResponse.venue || '',
+            Venue: eventResponse.Venue || eventResponse.venue || '',
+            tagline: eventResponse.tagline || '',
+            TeamSize: eventResponse.TeamSize || 1,
+            collegeStudentsOnly: eventResponse.collegeStudentsOnly ?? false,
+            coreTeamOnly: eventResponse.coreTeamOnly ?? false,
+            contactEmail: eventResponse.contactEmail || '',
+            contactPhone: eventResponse.contactPhone || '',
+            applicationStatus: eventResponse.applicationStatus || 'open',
+            applicationStartDate: eventResponse.applicationStartDate || '',
+            applicationEndDate: eventResponse.applicationEndDate || '',
             posterUrl:
-              res.data.response.posterUrl ||
-              res.data.response.eventHeaderImage ||
+              eventResponse.posterUrl ||
+              eventResponse.eventHeaderImage ||
               '',
             whatsappLink:
-              res.data.response.whatsappLink ||
-              res.data.response.whatsappGroupLink ||
-              (res.data.response as any).whatsapp ||
-              (res.data.response as any).link3 ||
+              eventResponse.whatsappLink ||
+              eventResponse.whatsappGroupLink ||
+              eventResponse.whatsapp ||
+              eventResponse.link3 ||
               '',
             eventWebsite:
-              res.data.response.eventWebsite ||
-              res.data.response.EventUrl ||
-              (res.data.response as any).website ||
-              (res.data.response as any).link1 ||
+              eventResponse.eventWebsite ||
+              eventResponse.EventUrl ||
+              eventResponse.website ||
+              eventResponse.link1 ||
               '',
+            EventUrl: eventResponse.EventUrl || eventResponse.eventWebsite || '',
             form:
-              res.data.response.form ||
-              res.data.response.registrationForm ||
-              (res.data.response as any).Form ||
-              (res.data.response as any).link2 ||
+              eventResponse.form ||
+              eventResponse.registrationForm ||
+              eventResponse.Form ||
+              eventResponse.link2 ||
               '',
+            Form: eventResponse.Form || eventResponse.form || '',
+            registrationForm: eventResponse.registrationForm || '',
+            link1: eventResponse.link1 || '',
+            link2: eventResponse.link2 || '',
+            link3: eventResponse.link3 || '',
             isPaidEvent: hasPaidEvent,
+            isPaid: hasPaidEvent,
             acceptanceBased,
             paymentQRCode: qrCodeUrl,
+            qrCodeUrl,
             paymentAmount: paymentAmount,
-            maxParticipants: res.data.response.maxParticipants,
-            attendeesCount: (res.data.response as any)._count?.attendees ?? 0,
-            customQuestions: res.data.response.customQuestions || [],
+            Fees: eventResponse.Fees || String(paymentAmount || ''),
+            participationFee: eventResponse.participationFee,
+            maxParticipants: eventResponse.maxParticipants,
+            attendeesCount: eventResponse._count?.attendees ?? 0,
+            customQuestions: eventResponse.customQuestions || [],
           });
           // Store TeamSize for team section
           setEventTeamSize(res.data.response.TeamSize || 1);
@@ -1425,7 +1445,7 @@ const Eventid = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         eventId={id as string}
-        eventData={data}
+        eventData={rawEvent || data}
         onUpdateSuccess={() => {
           setFetchNonce((n) => n + 1);
         }}

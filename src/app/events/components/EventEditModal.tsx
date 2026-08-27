@@ -46,6 +46,208 @@ interface EventEditModalProps {
   onUpdateSuccess?: () => void;
 }
 
+const EMPTY_EVENT_FORM: EventFormData = {
+  eventMode: '',
+  eventName: '',
+  university: '',
+  tagline: '',
+  description: '',
+  eventType: '',
+  maxTeamSize: 1,
+  venue: '',
+  collegeStudentsOnly: false,
+  noParticipationFee: true,
+  coreTeamOnly: false,
+  eventWebsite: '',
+  eventStartDate: '',
+  eventEndDate: '',
+  applicationStartDate: '',
+  applicationEndDate: '',
+  prizes: '',
+  contactEmail: '',
+  contactPhone: '',
+  form: '',
+  whatsappLink: '',
+  isPaidEvent: false,
+  paymentQRCode: '',
+  paymentAmount: 0,
+  maxParticipants: '',
+  customQuestions: [],
+};
+
+const EVENT_TYPE_VALUES = [
+  'hackathon',
+  'workshop',
+  'conference',
+  'competition',
+  'cultural',
+  'sports',
+  'technical',
+  'others',
+] as const;
+
+function firstNonEmpty(...values: unknown[]): string {
+  for (const value of values) {
+    if (value === undefined || value === null) continue;
+    const asString = String(value).trim();
+    if (asString) return String(value);
+  }
+  return '';
+}
+
+function toDateInputValue(value: unknown): string {
+  if (!value) return '';
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeEventMode(value: unknown): EventFormData['eventMode'] {
+  const mode = String(value || '').trim().toLowerCase();
+  if (mode === 'online' || mode === 'offline' || mode === 'hybrid') return mode;
+  return '';
+}
+
+function normalizeEventType(value: unknown): EventFormData['eventType'] {
+  const type = String(value || '').trim().toLowerCase();
+  if (type === 'other') return 'others';
+  if (EVENT_TYPE_VALUES.includes(type as (typeof EVENT_TYPE_VALUES)[number])) {
+    return type as EventFormData['eventType'];
+  }
+  return type ? (type as EventFormData['eventType']) : '';
+}
+
+function mapEventToFormData(source: any): {
+  form: EventFormData;
+  posterUrl: string;
+  qrUrl: string;
+} | null {
+  if (!source) return null;
+
+  const posterUrl = firstNonEmpty(
+    source.posterUrl,
+    source.eventHeaderImage,
+    source.eventHeader,
+    source.image
+  );
+  const qrUrl = firstNonEmpty(source.qrCodeUrl, source.paymentQRCode);
+  const isPaid =
+    Boolean(source.isPaid ?? source.isPaidEvent) || Boolean(qrUrl);
+  const paymentAmountRaw = firstNonEmpty(
+    source.paymentAmount,
+    source.Fees,
+    source.fees
+  );
+  const maxTeamSize = Number(
+    firstNonEmpty(source.maxTeamSize, source.TeamSize, 1)
+  );
+  const maxParticipantsRaw = source.maxParticipants;
+
+  return {
+    form: {
+      eventMode: normalizeEventMode(firstNonEmpty(source.eventMode, source.EventMode)),
+      eventName: firstNonEmpty(source.eventName, source.EventName),
+      university: firstNonEmpty(source.university),
+      tagline: firstNonEmpty(source.tagline),
+      description: firstNonEmpty(source.description),
+      eventType: normalizeEventType(firstNonEmpty(source.eventType, source.EventType)),
+      maxTeamSize: Number.isFinite(maxTeamSize) && maxTeamSize > 0 ? maxTeamSize : 1,
+      venue: firstNonEmpty(source.venue, source.Venue),
+      collegeStudentsOnly: Boolean(source.collegeStudentsOnly),
+      noParticipationFee: !isPaid,
+      coreTeamOnly: Boolean(source.coreTeamOnly),
+      eventWebsite: firstNonEmpty(
+        source.eventWebsite,
+        source.EventUrl,
+        source.EventWebsite,
+        source.link1
+      ),
+      eventStartDate: toDateInputValue(
+        firstNonEmpty(source.eventStartDate, source.startDate)
+      ),
+      eventEndDate: toDateInputValue(
+        firstNonEmpty(source.eventEndDate, source.endDate)
+      ),
+      applicationStartDate: toDateInputValue(source.applicationStartDate),
+      applicationEndDate: toDateInputValue(source.applicationEndDate),
+      prizes: firstNonEmpty(source.prizes),
+      contactEmail: firstNonEmpty(source.contactEmail),
+      contactPhone: firstNonEmpty(source.contactPhone),
+      form: firstNonEmpty(
+        source.form,
+        source.Form,
+        source.registrationForm,
+        source.link2
+      ),
+      whatsappLink: firstNonEmpty(
+        source.whatsappLink,
+        source.whatsappGroupLink,
+        source.link3
+      ),
+      isPaidEvent: isPaid,
+      paymentQRCode: qrUrl,
+      paymentAmount: paymentAmountRaw ? parseInt(String(paymentAmountRaw), 10) || 0 : 0,
+      maxParticipants:
+        maxParticipantsRaw === undefined ||
+        maxParticipantsRaw === null ||
+        maxParticipantsRaw === ''
+          ? ''
+          : maxParticipantsRaw,
+      customQuestions: Array.isArray(source.customQuestions)
+        ? source.customQuestions
+        : [],
+    },
+    posterUrl,
+    qrUrl,
+  };
+}
+
+function mergeEventForm(
+  current: EventFormData,
+  original: EventFormData | null
+): EventFormData {
+  if (!original) return current;
+
+  const keepText = (next: string | undefined, prev: string | undefined) => {
+    const nextValue = next ?? '';
+    if (nextValue.trim()) return nextValue;
+    return prev || nextValue;
+  };
+
+  return {
+    ...original,
+    ...current,
+    eventMode: current.eventMode || original.eventMode,
+    eventName: keepText(current.eventName, original.eventName),
+    university: keepText(current.university, original.university),
+    tagline: current.tagline,
+    description: keepText(current.description, original.description),
+    eventType: current.eventType || original.eventType,
+    maxTeamSize: current.maxTeamSize || original.maxTeamSize,
+    venue: keepText(current.venue, original.venue),
+    eventWebsite: current.eventWebsite,
+    eventStartDate: keepText(current.eventStartDate, original.eventStartDate),
+    eventEndDate: keepText(current.eventEndDate, original.eventEndDate),
+    applicationStartDate: current.applicationStartDate,
+    applicationEndDate: current.applicationEndDate,
+    prizes: current.prizes,
+    contactEmail: keepText(current.contactEmail, original.contactEmail),
+    contactPhone: keepText(current.contactPhone, original.contactPhone),
+    form: current.form,
+    whatsappLink: current.whatsappLink,
+    paymentQRCode: current.paymentQRCode || original.paymentQRCode,
+    customQuestions:
+      current.customQuestions && current.customQuestions.length > 0
+        ? current.customQuestions
+        : original.customQuestions,
+  };
+}
+
 const EventEditModal: React.FC<EventEditModalProps> = ({
   isOpen,
   onClose,
@@ -58,33 +260,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
   const [qrCodeImg, setQrCodeImg] = useState<File | null>(null);
   const [qrCodePreviewUrl, setQrCodePreviewUrl] = useState('');
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<EventFormData>({
-    eventMode: '',
-    eventName: '',
-    university: '',
-    tagline: '',
-    description: '',
-    eventType: '',
-    maxTeamSize: 1,
-    venue: '',
-    collegeStudentsOnly: false,
-    noParticipationFee: false,
-    coreTeamOnly: false,
-    eventWebsite: '',
-    eventStartDate: '',
-    eventEndDate: '',
-    applicationStartDate: '',
-    applicationEndDate: '',
-    prizes: '',
-    contactEmail: '',
-    contactPhone: '',
-    form: '',
-    whatsappLink: '',
-    isPaidEvent: false,
-    paymentQRCode: '',
-    paymentAmount: 0,
-    maxParticipants: '',
-  });
+  const [formData, setFormData] = useState<EventFormData>(EMPTY_EVENT_FORM);
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +273,9 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
   const [unlockedBadge, setUnlockedBadge] = useState<{ name: string; count: number; description: string } | null>(null);
   const [closeAfterAchievement, setCloseAfterAchievement] = useState(false);
   const [originalAppEndDate, setOriginalAppEndDate] = useState<string | null>(null);
+  const [originalFormData, setOriginalFormData] = useState<EventFormData | null>(null);
+  const [originalPosterUrl, setOriginalPosterUrl] = useState('');
+  const [originalQrUrl, setOriginalQrUrl] = useState('');
   const [showAnnouncementPrompt, setShowAnnouncementPrompt] = useState(false);
   const [announcementMsg, setAnnouncementMsg] = useState("");
 
@@ -107,6 +286,12 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  const getMinDateForField = (originalValue?: string) => {
+    const today = getTodayDateString();
+    if (originalValue && originalValue < today) return originalValue;
+    return today;
   };
   useEffect(() => {
     const tok = localStorage.getItem('token');
@@ -130,38 +315,51 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (eventData && isOpen) {
-      setFormData({
-        eventMode: eventData.EventMode || '',
-        eventName: eventData.EventName || '',
-        university: eventData.university || '',
-        tagline: eventData.tagline || '',
-        description: eventData.description || '',
-        eventType: eventData.EventType || '',
-        maxTeamSize: eventData.TeamSize || 1,
-        venue: eventData.Venue || '',
-        collegeStudentsOnly: eventData.collegeStudentsOnly || false,
-        noParticipationFee: !eventData.participationFee,
-        coreTeamOnly: false,
-        eventWebsite: eventData.eventWebsite || eventData.EventUrl || eventData.link1 || '',
-        eventStartDate: eventData.startDate || '',
-        eventEndDate: eventData.endDate || '',
-        applicationStartDate: eventData.applicationStartDate || '',
-        applicationEndDate: eventData.applicationEndDate || '',
-        prizes: eventData.prizes || '',
-        contactEmail: eventData.contactEmail || '',
-        contactPhone: eventData.contactPhone || '',
-        form: eventData.form || eventData.Form || eventData.registrationForm || eventData.link2 || '',
-        whatsappLink: eventData.whatsappLink || eventData.whatsappGroupLink || eventData.link3 || '',
-        isPaidEvent: eventData.isPaid || false,
-        paymentQRCode: eventData.qrCodeUrl || '',
-        paymentAmount: parseInt(eventData.Fees || '0', 10),
-        maxParticipants: eventData.maxParticipants || '',
-      });
-      setOriginalAppEndDate(eventData.applicationEndDate || '');
-      setPreviewUrl(eventData.posterUrl || '');
-    }
-  }, [eventData, isOpen]);
+    if (!isOpen) return;
+
+    setStep(1);
+    setImg(null);
+    setQrCodeImg(null);
+    setErrors({});
+    setIsSubmitting(false);
+
+    const applySource = (source: any) => {
+      const mapped = mapEventToFormData(source);
+      if (!mapped) return;
+      const nextForm = {
+        ...mapped.form,
+        university: lockedUniversity || mapped.form.university,
+      };
+      setFormData(nextForm);
+      setOriginalFormData(nextForm);
+      setOriginalAppEndDate(nextForm.applicationEndDate || '');
+      setPreviewUrl(mapped.posterUrl);
+      setQrCodePreviewUrl(mapped.qrUrl);
+      setOriginalPosterUrl(mapped.posterUrl);
+      setOriginalQrUrl(mapped.qrUrl);
+    };
+
+    applySource(eventData);
+
+    const loadLatest = async () => {
+      if (!eventId) return;
+      const tok = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : '') || '';
+      if (!tok) return;
+      try {
+        const res = await axios.get(`/api/v1/events/event/${eventId}`, {
+          headers: { authorization: `Bearer ${tok}` },
+        });
+        const latest = (res.data as any)?.response;
+        if (latest) applySource(latest);
+      } catch {
+        // Keep the snapshot hydrated from eventData.
+      }
+    };
+
+    loadLatest();
+    // lockedUniversity is applied when present; the user fetch effect also keeps it in formData.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, eventId, eventData, token]);
 
   // Auto-fill and lock university to the founder's collegeName
   useEffect(() => {
@@ -333,7 +531,9 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
         if (!formData.venue?.trim()) newErrors.venue = 'Venue is required';
         // Validate paid event fields
         if (formData.isPaidEvent) {
-          if (!qrCodeImg) newErrors.paymentQRCode = 'QR code is required for paid events';
+          if (!qrCodeImg && !qrCodePreviewUrl) {
+            newErrors.paymentQRCode = 'QR code is required for paid events';
+          }
           if (!formData.paymentAmount || formData.paymentAmount <= 0) 
             newErrors.paymentAmount = 'Payment amount is required and must be greater than 0';
         }
@@ -347,17 +547,19 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const isUnchangedDate = (field: 'eventStartDate' | 'eventEndDate' | 'applicationStartDate' | 'applicationEndDate') =>
+          Boolean(originalFormData && formData[field] === originalFormData[field]);
         
-        // Validate start date is not in the past
-        if (formData.eventStartDate) {
+        // Validate start date is not in the past unless it was already saved
+        if (formData.eventStartDate && !isUnchangedDate('eventStartDate')) {
           const startDate = new Date(formData.eventStartDate);
           if (startDate < today) {
             newErrors.eventStartDate = 'Event start date cannot be in the past';
           }
         }
         
-        // Validate application start date is not in the past
-        if (formData.applicationStartDate) {
+        // Validate application start date is not in the past unless it was already saved
+        if (formData.applicationStartDate && !isUnchangedDate('applicationStartDate')) {
           const appStartDate = new Date(formData.applicationStartDate);
           if (appStartDate < today) {
             newErrors.applicationStartDate = 'Application start date cannot be in the past';
@@ -389,8 +591,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
         break;
 
       case 4:
-        // Step 4 validation - Image is required
-        if (!img) {
+        if (!img && !previewUrl) {
           newErrors.image = 'Event image is required';
         }
         break;
@@ -424,15 +625,25 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
 
     setIsSubmitting(true);
 
-    // Server-side date conflict check
+    try {
+    const mergedForm = mergeEventForm(formData, originalFormData);
+    const datesUnchanged =
+      Boolean(originalFormData) &&
+      mergedForm.eventStartDate === originalFormData?.eventStartDate &&
+      mergedForm.eventEndDate === originalFormData?.eventEndDate &&
+      mergedForm.applicationStartDate === originalFormData?.applicationStartDate &&
+      mergedForm.applicationEndDate === originalFormData?.applicationEndDate;
+
+    // Server-side date conflict check (skip when dates were not edited)
+    if (!datesUnchanged) {
     try {
       const dateCheckRes = await axios.post(
         `/api/v1/events/checkEventDates`,
         {
-          eventStartDate: formData.eventStartDate,
-          eventEndDate: formData.eventEndDate,
-          applicationStartDate: formData.applicationStartDate,
-          applicationEndDate: formData.applicationEndDate,
+          eventStartDate: mergedForm.eventStartDate,
+          eventEndDate: mergedForm.eventEndDate,
+          applicationStartDate: mergedForm.applicationStartDate,
+          applicationEndDate: mergedForm.applicationEndDate,
         },
         {
           headers: { authorization: `Bearer ${token}` },
@@ -454,14 +665,11 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
         toast(`${existingEvents.length} event(s) already scheduled in this period. Double-check your dates.`, { duration: 6000 });
       }
     } catch {
-      // Non-blocking: if the check endpoint fails, proceed with creation
+      // Non-blocking: if the check endpoint fails, proceed with update
     }
-    let imageLink = '';
-    if (!img) {
-      toast('you are required to upload a poster');
-      setIsSubmitting(false);
-      return;
-    } else {
+    }
+    let imageLink = originalPosterUrl;
+    if (img) {
       const maxBytes = 2 * 1024 * 1024;
       let toUpload = img;
       if (img.size > maxBytes) {
@@ -474,11 +682,15 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
       }
       imageLink = await uploadImageToImageKit(await toBase64(toUpload), toUpload.name, '/events');
       toast('Image uploaded');
+    } else if (!imageLink && !previewUrl) {
+      toast('you are required to upload a poster');
+      setIsSubmitting(false);
+      return;
     }
 
-    // Handle QR code upload for paid events
-    let qrCodeLink = '';
-    if (formData.isPaidEvent && qrCodeImg) {
+    // Handle QR code upload for paid events — keep the saved QR unless a new file is chosen
+    let qrCodeLink = originalQrUrl || mergedForm.paymentQRCode || '';
+    if (mergedForm.isPaidEvent && qrCodeImg) {
       const maxBytes = 2 * 1024 * 1024;
       let toUpload = qrCodeImg;
       if (qrCodeImg.size > maxBytes) {
@@ -491,19 +703,28 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
       }
       qrCodeLink = await uploadImageToImageKit(await toBase64(toUpload), toUpload.name, '/payment-qr');
       toast('Payment QR code uploaded');
+    } else if (mergedForm.isPaidEvent && !qrCodeLink && !qrCodePreviewUrl) {
+      toast('Payment QR code is required for paid events');
+      setIsSubmitting(false);
+      return;
     }
 
-    // Build payload - only include paid event fields if it's a paid event
+    // Build payload from the saved event, then overlay only the current form values
     const payload: any = {
-      ...formData,
+      ...mergedForm,
       // Backend support for various field names
-      EventUrl: formData.eventWebsite,
-      EventWebsite: formData.eventWebsite,
-      registrationForm: formData.form,
-      Form: formData.form,
-      link1: formData.eventWebsite,
-      link2: formData.form,
-      link3: formData.whatsappLink,
+      EventUrl: mergedForm.eventWebsite,
+      EventWebsite: mergedForm.eventWebsite,
+      EventName: mergedForm.eventName,
+      EventMode: mergedForm.eventMode,
+      EventType: mergedForm.eventType,
+      TeamSize: mergedForm.maxTeamSize,
+      Venue: mergedForm.venue,
+      registrationForm: mergedForm.form,
+      Form: mergedForm.form,
+      link1: mergedForm.eventWebsite,
+      link2: mergedForm.form,
+      link3: mergedForm.whatsappLink,
     };
     if (imageLink) payload.image = imageLink;
 
@@ -514,10 +735,10 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
     }
 
     // Map isPaidEvent to isPaid for backend
-    if (formData.isPaidEvent) {
+    if (mergedForm.isPaidEvent) {
       payload.isPaid = true;
       payload.paymentQRCode = qrCodeLink;
-      payload.paymentAmount = formData.paymentAmount;
+      payload.paymentAmount = mergedForm.paymentAmount;
     } else {
       payload.isPaid = false;
       // For free events, ensure these are not sent or are null
@@ -540,11 +761,11 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
       setIsSubmitting(false);
       
       // Check if application date was extended
-      if (originalAppEndDate && formData.applicationEndDate) {
+      if (originalAppEndDate && mergedForm.applicationEndDate) {
         const oldDate = new Date(originalAppEndDate);
-        const newDate = new Date(formData.applicationEndDate);
+        const newDate = new Date(mergedForm.applicationEndDate);
         if (newDate > oldDate) {
-          setAnnouncementMsg(`The application deadline has been extended to ${formData.applicationEndDate}!`);
+          setAnnouncementMsg(`The application deadline has been extended to ${mergedForm.applicationEndDate}!`);
           setShowAnnouncementPrompt(true);
           return;
         }
@@ -556,6 +777,10 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
       toast(updateResult.data.msg);
       setIsSubmitting(false);
       onClose();
+    }
+    } catch {
+      toast('Failed to update event. Please try again.');
+      setIsSubmitting(false);
     }
   };
  
@@ -582,7 +807,12 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
 
           {/* Modal Header */}
           <div className="sticky top-0 z-10 bg-gray-900 border-b border-yellow-500/30 p-4 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white">Edit Event</h2>
+            <div>
+              <h2 className="text-xl font-bold text-white">Edit Event</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Change only what you need. Unedited details stay as saved.
+              </p>
+            </div>
             <Button
               onClick={onClose}
               className="text-gray-400 hover:text-white transition-colors"
@@ -1160,6 +1390,9 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                           <label className="block text-sm font-medium text-yellow-400 mb-2">
                             Payment QR Code*
                           </label>
+                          <p className="text-xs text-gray-400 mb-2">
+                            Current QR is kept unless you upload a new one.
+                          </p>
                           <input
                             type="file"
                             accept="image/*"
@@ -1178,7 +1411,9 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                                 />
                               </div>
                               <div className="flex flex-col gap-2">
-                                <p className="text-sm text-gray-300">QR code uploaded</p>
+                                <p className="text-sm text-gray-300">
+                                  {qrCodeImg ? 'New QR code selected' : 'Current payment QR'}
+                                </p>
                                 <button
                                   type="button"
                                   onClick={() => { setQrCodeImg(null); setQrCodePreviewUrl(''); }}
@@ -1186,6 +1421,9 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                                 >
                                   <X className="w-3 h-3" /> Remove
                                 </button>
+                                <label htmlFor="qrCodeUpload" className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer">
+                                  Replace
+                                </label>
                               </div>
                             </div>
                           ) : (
@@ -1234,7 +1472,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                           type="date"
                           value={formData.eventStartDate}
                           onChange={handleChange}
-                          min={getTodayDateString()}
+                          min={getMinDateForField(originalFormData?.eventStartDate)}
                           className="w-full bg-gray-800 border border-gray-700 focus:border-yellow-500 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none"
                         />
                       </div>
@@ -1292,7 +1530,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                           type="date"
                           value={formData.applicationStartDate}
                           onChange={handleChange}
-                          min={getTodayDateString()}
+                          min={getMinDateForField(originalFormData?.applicationStartDate)}
                           className="w-full bg-gray-800 border border-gray-700 focus:border-yellow-500 text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none"
                         />
                       </div>
@@ -1423,6 +1661,9 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                     <label className="block text-sm font-medium text-yellow-400 mb-1">
                       Event Image*
                     </label>
+                    <p className="text-xs text-gray-400 mb-2">
+                      Current poster is kept unless you upload a new one.
+                    </p>
                     <div className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center hover:border-yellow-500/50 transition-colors">
                       {previewUrl ? (
                         <div className="relative">
@@ -1434,17 +1675,24 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                             className="mx-auto h-48 object-cover rounded-lg"
                           />
                           <Button
+                            type="button"
                             onClick={() => {
                               setPreviewUrl('');
-                              setFormData((prev: any) => ({
-                                ...prev,
-                                image: null,
-                              }));
+                              setImg(null);
                             }}
                             className="absolute top-2 right-2 bg-black/70 rounded-full p-1 text-red-400 hover:text-red-500"
                           >
                             <X size={16} />
                           </Button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              document.getElementById('event-image')?.click()
+                            }
+                            className="absolute bottom-2 right-2 bg-black/70 text-yellow-400 text-xs px-2 py-1 rounded"
+                          >
+                            Replace
+                          </button>
                         </div>
                       ) : (
                         <div
@@ -1577,7 +1825,7 @@ const EventEditModal: React.FC<EventEditModalProps> = ({
                 className={`px-6 py-2 bg-yellow-500 text-black rounded-lg font-medium hover:bg-yellow-400 transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
                   }`}
               >
-                {isSubmitting ? 'Creating...' : 'Update Event'}
+                {isSubmitting ? 'Updating...' : 'Update Event'}
               </Button>
             )}
           </div>
