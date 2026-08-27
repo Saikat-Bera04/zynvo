@@ -1,0 +1,36 @@
+name: Build check
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_APP_URL: https://zynvosocial.com
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktaW5zdGFuY2UuY2xlcmsuYWNjb3VudHMuZGV2JA
+      CLERK_SECRET_KEY: sk_test_dummysecretkeyforcibuildcheck12
+      INTERNAL_PROXY_SECRET: ci-build-check-secret-32chars-ok
+      BACKEND_BASE_URL: https://zynvo-backend-606118537549.asia-south1.run.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Production build
+        run: npm run build
